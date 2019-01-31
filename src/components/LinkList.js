@@ -4,8 +4,8 @@ import { Query } from 'react-apollo'
 import gql from 'graphql-tag'
 
 export const FEED_QUERY = gql`
-  {
-    feed {
+  query FeedQuery($first: Int, $skip: Int, $orderBy: LinkOrderByInput) {
+    feed(first: $first, skip: $skip, orderBy: $orderBy) {
       links {
         id
         createdAt
@@ -22,6 +22,7 @@ export const FEED_QUERY = gql`
           }
         }
       }
+      count
     }
   }
 `
@@ -81,14 +82,14 @@ const NEW_VOTES_SUBSCRIPTION = gql`
 class LinkList extends Component {
   render() {
     return (
-      <Query query={FEED_QUERY}>
+      <Query query={FEED_QUERY} variables={this._getQueryVariables()}>
         {({ loading, error, data, subscribeToMore }) => {
           if (loading) return <div>Fetching</div>
           if (error) return <div>Error</div>
 
           this._subscribeToNewLinks(subscribeToMore)
           this._subscribeToNewVotes(subscribeToMore)
-          
+
           const linksToRender = data.feed.links
     
           return (
@@ -139,6 +140,16 @@ class LinkList extends Component {
     subscribeToMore({
       document: NEW_VOTES_SUBSCRIPTION
     })
+  }
+
+  _getQueryVariables = () => {
+    const isNewPage = this.props.location.pathname.includes('new')
+    const page = parseInt(this.props.match.params.page, 10)
+  
+    const skip = isNewPage ? (page - 1) * LINKS_PER_PAGE : 0
+    const first = isNewPage ? LINKS_PER_PAGE : 100
+    const orderBy = isNewPage ? 'createdAt_DESC' : null
+    return { first, skip, orderBy }
   }
 }
 
